@@ -20,41 +20,32 @@ export default function Pagination({
   onPageChange,
   onLimitChange,
 }: PaginationProps) {
-  // Jika total tidak diberikan oleh API, estimasikan agar teks "Menampilkan X-Y" tetap berjalan
-  const estimatedTotal = total ?? (hasNext ? page * limit + 1 : (page - 1) * limit + count);
-  
+  // Menghitung start dan end agar akurat sesuai limit (misal: 1-5, atau 81-100)
   const start = count === 0 ? 0 : (page - 1) * limit + 1;
   const end = count === 0 ? 0 : (page - 1) * limit + count;
   
-  // Memisahkan kalkulasi batas navigasi berdasarkan ketersediaan total data
+  // Menghapus logika "+ 1" yang membuat angka menjadi 101. 
+  // Sekarang total akan murni mengikuti total asli (jika ada) atau batas jumlah data terakhir (misal: 100).
+  const estimatedTotal = total ?? (hasNext ? page * limit : (page - 1) * limit + count);
+  
   const actualTotalPages = total != null ? Math.max(1, Math.ceil(total / limit)) : null;
   const canGoBack = page > 1;
   const canGoNext = total != null ? page < actualTotalPages! : hasNext;
 
-  // Console.log untuk melihat ada berapa data (ditampilkan dan total)
+  // Console.log untuk memantau data di background
   useEffect(() => {
-    console.log(`Menampilkan: ${count} data pada halaman ini | Total data: ${total ?? 'Tidak diketahui (berbasis hasNext)'}`);
-  }, [count, total]);
+    console.log(`Menampilkan: ${count} data pada halaman ini | Total data: ${total ?? estimatedTotal}`);
+  }, [count, total, estimatedTotal]);
 
-  // Logika nomor halaman sesuai pola yang diminta: 
-  // Halaman 1 & 2 -> [1, 2, 3]
-  // Halaman 3 & 4 -> [3, 4, 5]
+  // Logika pembagian nomor halaman
   const getPageNumbers = () => {
-    // Menentukan angka awal halaman berdasarkan pembagian blok per 2 halaman
     const startPage = Math.floor((page - 1) / 2) * 2 + 1;
-    
     let pages = [startPage, startPage + 1, startPage + 2];
 
     if (total != null && actualTotalPages != null) {
-      // Jika API menyediakan total data, pastikan halaman tidak melewati batas maksimum
       pages = pages.filter(p => p <= actualTotalPages);
     } else if (!hasNext) {
-      // Jika API tidak mengirimkan total dan sudah tidak ada data selanjutnya (hasNext = false)
-      // potong array agar tidak menampilkan halaman kosong di depan
       pages = pages.filter(p => p <= page);
-      
-      // Jika setelah dipotong hanya tersisa 1 halaman (misal di halaman terakhir 3), 
-      // tampilkan angka sebelumnya agar desain tombol tidak sendirian
       if (pages.length === 1 && page > 1) {
         pages = [page - 1, page];
       }
@@ -67,7 +58,7 @@ export default function Pagination({
 
   return (
     <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white px-6 py-4 sm:flex-row sm:items-center sm:justify-between shadow-sm">
-      {/* Bagian Kiri: Tampilkan, Dropdown Limit, dan Format Teks "Menampilkan X - Y dari Z data" */}
+      {/* Bagian Kiri: Tampilkan, Dropdown Limit, dan Teks Informasi */}
       <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600">
         <span className="font-medium text-slate-700">Tampilkan</span>
         <select
@@ -82,11 +73,12 @@ export default function Pagination({
           ))}
         </select>
         <span className="text-slate-500">
-          Menampilkan <strong className="text-slate-800">{start} - {end}</strong> dari <strong className="text-slate-800">{estimatedTotal.toLocaleString("id-ID")}{total == null && "+"}</strong> data
+          {/* Simbol "+" telah dihapus sepenuhnya dari sini */}
+          Menampilkan <strong className="text-slate-800">{start} - {end}</strong> dari <strong className="text-slate-800">{estimatedTotal.toLocaleString("id-ID")}</strong> data
         </span>
       </div>
 
-      {/* Bagian Kanan: Navigasi Panah dan Nomor Halaman Dinamis */}
+      {/* Bagian Kanan: Navigasi Panah dan Nomor Halaman */}
       <div className="flex items-center justify-end gap-1.5">
         <button
           type="button"
@@ -99,7 +91,6 @@ export default function Pagination({
         </button>
 
         {pages.map((p, index) => {
-          // (Opsional) Jika di kemudian hari Anda menambahkan fitur '...' lagi
           if (p === '...') {
             return (
               <span key={`ellipsis-${index}`} className="flex size-9 items-center justify-center text-sm font-semibold text-slate-400">
