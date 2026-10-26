@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect } from "react";
 
 interface PaginationProps {
   page: number;
@@ -19,30 +20,47 @@ export default function Pagination({
   onPageChange,
   onLimitChange,
 }: PaginationProps) {
-  // Jika total tidak diberikan oleh API, estimasikan berdasarkan halaman aktif dan hasNext
+  // Jika total tidak diberikan oleh API, estimasikan agar teks "Menampilkan X-Y" tetap berjalan
   const estimatedTotal = total ?? (hasNext ? page * limit + 1 : (page - 1) * limit + count);
   
   const start = count === 0 ? 0 : (page - 1) * limit + 1;
   const end = count === 0 ? 0 : (page - 1) * limit + count;
   
-  const totalPages = Math.max(1, Math.ceil(estimatedTotal / limit));
+  // Memisahkan kalkulasi batas navigasi berdasarkan ketersediaan total data
+  const actualTotalPages = total != null ? Math.max(1, Math.ceil(total / limit)) : null;
   const canGoBack = page > 1;
-  const canGoNext = totalPages != null ? page < totalPages : hasNext;
+  const canGoNext = total != null ? page < actualTotalPages! : hasNext;
 
-  // Logika nomor halaman: Menampilkan rentang halaman secara dinamis (misal: 1, 2, 3, 4 tergantung total data)
+  // Console.log untuk melihat ada berapa data (ditampilkan dan total)
+  useEffect(() => {
+    console.log(`Menampilkan: ${count} data pada halaman ini | Total data: ${total ?? 'Tidak diketahui (berbasis hasNext)'}`);
+  }, [count, total]);
+
+  // Logika nomor halaman sesuai pola yang diminta: 
+  // Halaman 1 & 2 -> [1, 2, 3]
+  // Halaman 3 & 4 -> [3, 4, 5]
   const getPageNumbers = () => {
-    const totalP = totalPages || 1;
-    if (totalP <= 5) {
-      return Array.from({ length: totalP }, (_, i) => i + 1);
-    }
+    // Menentukan angka awal halaman berdasarkan pembagian blok per 2 halaman
+    const startPage = Math.floor((page - 1) / 2) * 2 + 1;
     
-    if (page <= 3) {
-      return [1, 2, 3, 4, '...', totalP];
-    } else if (page >= totalP - 2) {
-      return [1, '...', totalP - 3, totalP - 2, totalP - 1, totalP];
-    } else {
-      return [1, '...', page - 1, page, page + 1, '...', totalP];
+    let pages = [startPage, startPage + 1, startPage + 2];
+
+    if (total != null && actualTotalPages != null) {
+      // Jika API menyediakan total data, pastikan halaman tidak melewati batas maksimum
+      pages = pages.filter(p => p <= actualTotalPages);
+    } else if (!hasNext) {
+      // Jika API tidak mengirimkan total dan sudah tidak ada data selanjutnya (hasNext = false)
+      // potong array agar tidak menampilkan halaman kosong di depan
+      pages = pages.filter(p => p <= page);
+      
+      // Jika setelah dipotong hanya tersisa 1 halaman (misal di halaman terakhir 3), 
+      // tampilkan angka sebelumnya agar desain tombol tidak sendirian
+      if (pages.length === 1 && page > 1) {
+        pages = [page - 1, page];
+      }
     }
+
+    return pages;
   };
 
   const pages = getPageNumbers();
@@ -64,11 +82,11 @@ export default function Pagination({
           ))}
         </select>
         <span className="text-slate-500">
-          Menampilkan <strong className="text-slate-800">{start} - {end}</strong> dari <strong className="text-slate-800">{estimatedTotal.toLocaleString("id-ID")}</strong> data
+          Menampilkan <strong className="text-slate-800">{start} - {end}</strong> dari <strong className="text-slate-800">{estimatedTotal.toLocaleString("id-ID")}{total == null && "+"}</strong> data
         </span>
       </div>
 
-      {/* Bagian Kanan: Navigasi Panah dan Nomor Halaman Konsisten */}
+      {/* Bagian Kanan: Navigasi Panah dan Nomor Halaman Dinamis */}
       <div className="flex items-center justify-end gap-1.5">
         <button
           type="button"
@@ -81,6 +99,7 @@ export default function Pagination({
         </button>
 
         {pages.map((p, index) => {
+          // (Opsional) Jika di kemudian hari Anda menambahkan fitur '...' lagi
           if (p === '...') {
             return (
               <span key={`ellipsis-${index}`} className="flex size-9 items-center justify-center text-sm font-semibold text-slate-400">

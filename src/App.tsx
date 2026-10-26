@@ -13,7 +13,7 @@ import Pagination from "./components/Pagination";
 
 export default function App() {
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(6);
+  const [limit, setLimit] = useState(5);
   const [selectedRoutes, setSelectedRoutes] = useState<string[]>([]);
   const [selectedTrips, setSelectedTrips] = useState<string[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
